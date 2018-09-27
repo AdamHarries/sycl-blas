@@ -365,7 +365,9 @@ class PointerMapper {
    * @param node A reference to the free node to be fused
    */
   void fuse_backward(typename pointerMap_t::iterator& node) {
+    std::cout << "Fusing backwards! " << std::endl;
     while (node != m_pointerMap.begin()) {
+      std::cout << "\tEntered while loop" << std::endl;
       // if previous node is free, extend it
       // with the size of the current one
       auto prev_node = std::prev(node);
@@ -374,13 +376,17 @@ class PointerMapper {
       }
       prev_node->second.m_size += node->second.m_size;
 
+      std::cout << "Erasing: " << std::endl;
       // remove the current node
+      std::cout << "\tfreeList" << std::endl;
       m_freeList.erase(node);
+      std::cout << "\tPointerMap" << std::endl;
       m_pointerMap.erase(node);
 
       // point to the previous node
       node = prev_node;
     }
+    std::cout << "Done fusing!" << std::endl;
   }
 
   /* remove_pointer.
@@ -506,9 +512,14 @@ inline void PointerMapper::remove_pointer<false>(const virtual_pointer_t ptr) {
  */
 template <typename buffer_allocator = buffer_allocator_default_t>
 inline void* SYCLmalloc(size_t size, PointerMapper& pMap) {
+  std::cout << "Sycl malloc called." << std::endl;
   // Create a generic buffer of the given size
   using buffer_t = cl::sycl::buffer<buffer_data_type_t, 1, buffer_allocator>;
-  auto thePointer = pMap.add_pointer(buffer_t(cl::sycl::range<1>{size}));
+  std::cout << "Attempting to make a buffer of size: " << size << std::endl;
+  auto buffer = buffer_t(cl::sycl::range<1>{size});
+  std::cout << "Buffer created. " << std::endl;
+  auto thePointer = pMap.add_pointer(buffer);
+  std::cout << "Pointer added to map. " << std::endl;
   // Store the buffer on the global list
   return static_cast<void*>(thePointer);
 }

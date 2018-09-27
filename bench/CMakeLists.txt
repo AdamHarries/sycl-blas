@@ -11,6 +11,7 @@ include(FindOpenCL)
 include(FindComputeCpp)
 include(ConfigureSYCLBLAS)
 
+
 # Manually search for CLBLAST
 # if (DEFINED CLBLAST_ROOT) 
 #   set(CMAKE_PREFIX_PATH ${CLBLAST_ROOT})

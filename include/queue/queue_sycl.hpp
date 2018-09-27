@@ -86,7 +86,9 @@ class Queue_Interface<SYCL> {
     } else if (plat_name.find("computeaorta") != std::string::npos &&
                device_type == cl::sycl::info::device_type::cpu) {
       return SYCL_RCAR_HOST_CPU;
-    } else {
+    } else if(device_type == cl::sycl::info::device_type::cpu) { 
+      return SYCL_CPU;
+    }else {
       return SYCL_UNSUPPORTED_DEVICE;
     }
     throw std::runtime_error("couldn't find device");
@@ -98,6 +100,7 @@ class Queue_Interface<SYCL> {
   }
   template <typename T>
   inline T *allocate(size_t num_elements) const {
+    std::cout << "Allocating " << num_elements << " elements, each of size " << sizeof(T) << " total: " << (num_elements * sizeof(T)) << std::endl;
     return static_cast<T *>(cl::sycl::codeplay::SYCLmalloc(
         num_elements * sizeof(T), *pointerMapperPtr_));
   }
@@ -106,6 +109,11 @@ class Queue_Interface<SYCL> {
   inline void deallocate(T *p) const {
     cl::sycl::codeplay::SYCLfree(static_cast<void *>(p), *pointerMapperPtr_);
   }
+
+  inline void clear() const { 
+    cl::sycl::codeplay::SYCLfreeAll(*pointerMapperPtr_);
+  }
+
   cl::sycl::queue get_queue() const { return q_; }
 
   // This function returns the nearest power of 2 Work-group size which is <=

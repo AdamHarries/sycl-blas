@@ -191,7 +191,11 @@ struct benchmark {
   template <typename ScalarT>
   static std::vector<ScalarT> const_data(size_t size, ScalarT const_value = 0) {
     std::vector<ScalarT> v = std::vector<ScalarT>(size);
-    std::fill(v.begin(), v.end(), const_value);
+    auto const_initialiser = [](ScalarT x) -> ScalarT { 
+      return 0.0; 
+    };
+    // std::fill(v.begin(), v.end(), const_value);
+    std::transform(v.begin(), v.end(), v.begin(), const_initialiser);
     return v;
   }
 
@@ -387,6 +391,24 @@ int main_impl(Range<ParamT>* range_param, const unsigned reps, Ex ex,
   return 0;
 }
 
+template <typename DeviceSelector>
+static cl::sycl::queue make_queue(DeviceSelector s) {
+  return cl::sycl::queue(s, [=](cl::sycl::exception_list eL) {
+    for (auto &e : eL) {
+      try {
+        std::rethrow_exception(e);
+      } catch (cl::sycl::exception &e) {
+        std::cout << "E " << e.what() << std::endl;
+      } catch (std::exception &e) {
+        std::cout << "Standard Exception " << e.what() << std::endl;
+      } catch (...) {
+        std::cout << " An exception " << std::endl;
+      }
+    }
+  });
+}
+
+
 /** BENCHMARK_MAIN.
  * The main entry point of a benchmark
  */
@@ -397,7 +419,7 @@ int main_impl(Range<ParamT>* range_param, const unsigned reps, Ex ex,
       return 1;                                                       \
     }                                                                 \
     cli_device_selector cds(ba.device_vendor, ba.device_type);        \
-    cl::sycl::queue q(cds);                                           \
+    cl::sycl::queue q = make_queue(cds);                                           \
     Executor<SYCL> ex(q);                                             \
     return main_impl((&RANGE_PARAM), (REPS), ex, ba.requestedOutput); \
   }

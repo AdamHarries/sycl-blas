@@ -108,6 +108,13 @@ class ReferenceGemmFactory {
                                                    IndexType n) noexcept {
     const cl::sycl::range<1> nwg((m * n - 1) / wg_size + 1);
     const cl::sycl::range<1> wgs(wg_size);
+    #define VERBOSE
+#ifdef VERBOSE
+    std::cout << " ReferenceGemmFactory M: " << m << " , N " << n
+              << " , wg_size: " << wg_size << " , nwg : "
+              <<  (m * n - 1) / wg_size + 1
+              << std::endl;
+#endif
     return cl::sycl::nd_range<1>(nwg * wgs, wgs);
   }
   inline IndexType getSize() const { return m * n; }
@@ -389,6 +396,7 @@ class GemmFactory {
                                  ((n - 1) / big_tile_cols + 1) * tl_rows *
                                  tl_cols);
     const cl::sycl::range<1> wgs(wg_size);
+    #define VERBOSE
 #ifdef VERBOSE
     std::cout << " M: " << m << " , N " << n
               << " , big_tile_rows: " << big_tile_rows

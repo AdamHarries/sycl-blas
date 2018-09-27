@@ -62,11 +62,13 @@ typename Executor::Return_Type _select_gemm(
 #define ENABLE_GEMM_TRANSPOSE(_trans_a, _trans_b)                              \
   if (_TransA == _trans_a && _TransB == _trans_b) {                            \
     if (ex.has_local_memory()) {                                               \
+      std::cout << "Device has local memory." << std::endl;				   \
       auto gemm = make_gemm<DoubleBuffer, ConflictA, ConflictB, ClSize, TileT, \
                             _trans_a, _trans_b>(buffer_a, buffer_b, buffer_c,  \
                                                 T(_alpha), T(_beta));          \
       ret = ex.gemm_executor(gemm);                                            \
     } else {                                                                   \
+      std::cout << "Device does not have local memory! " << std::endl;         \
       auto gemm = make_gemm_no_local_mem<WgSize, _trans_a, _trans_b>(          \
           buffer_a, buffer_b, buffer_c, T(_alpha), T(_beta));                  \
       ret = ex.gemm_executor(gemm);                                            \
@@ -150,8 +152,11 @@ cl::sycl::event _gemm(Executor& ex, char _TransA, char _TransB, IndexType _M,
   }
 #ifndef NAIVE_GEMM
 #if defined(DYNAMIC)
+  std::cout << "Device type = " << ex.get_device_type() << std::endl;  
   if (ex.get_device_type() ==
-      Executor::Queue_Interface_Type::device_type::SYCL_INTEL_GPU) {
+      Executor::Queue_Interface_Type::device_type::SYCL_INTEL_GPU ||
+      ex.get_device_type() == Executor::Queue_Interface_Type::device_type::SYCL_CPU) {
+        std::cout << " Found SYCL GPU!" << std::endl;
     BIND_DATA_SIZE(1024, 4096, 1024) TO_TPARAMS(128, false, 64, 4, 4, 16, 16);
     BIND_DATA_SIZE(10, 1024, 1024) TO_TPARAMS(128, false, 64, 2, 2, 8, 8);
     BIND_DEFAULT TO_TPARAMS(128, false, 64, 8, 8, 8, 8);

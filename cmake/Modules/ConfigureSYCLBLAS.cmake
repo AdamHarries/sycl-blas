@@ -4,6 +4,10 @@ set(COMPUTECPP_DEVICE_COMPILER_FLAGS
     "${COMPUTECPP_DEVICE_COMPILER_FLAGS} -no-serial-memop -Xclang -cl-mad-enable -O3")
 message(STATUS "${COMPUTECPP_DEVICE_COMPILER_FLAGS}")
 
+set(CMAKE_CXX_FLAGS 
+  "${CMAKE_CXX_FLAGS} -O3 -g")
+message(STATUS "${CMAKE_CXX_FLAGS}")
+
 # Check to see if we've disabled double support in the tests
 option(NO_DOUBLE_SUPPORT "Disable double support when testing." off)
 if(NO_DOUBLE_SUPPORT)

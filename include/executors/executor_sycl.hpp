@@ -284,6 +284,10 @@ class Executor<SYCL> {
   inline void deallocate(T *p) const {
     q_interface.deallocate(p);
   }
+
+  inline void clear() const { 
+    q_interface.clear();
+  }
   /*
   @brief this class is to return the dedicated buffer to the user
   @ tparam T is the type of the pointer

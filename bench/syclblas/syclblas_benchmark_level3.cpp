@@ -29,6 +29,8 @@
 #include <interface/blas1_interface.hpp>
 #include <interface/blas3_interface.hpp>
 
+#include <thread>
+
 using namespace blas;
 
 BENCHMARK_NAME_FORMAT(blas_level_3) {
@@ -61,13 +63,22 @@ BENCHMARK(gemm, blas_level_3) {
   std::vector<ScalarT> b = benchmark<>::random_data<ScalarT>(k * n);
   std::vector<ScalarT> c = benchmark<>::const_data<ScalarT>(m * n, 0);
 
+  std::cout << "Allocating a" << std::endl;
   auto a_gpu = ex.template allocate<ScalarT>(m * k);
+  std::cout << "Allocating b" << std::endl;
   auto b_gpu = ex.template allocate<ScalarT>(k * n);
+  std::cout << "Allocating c" << std::endl;
   auto c_gpu = ex.template allocate<ScalarT>(m * n);
 
-  ex.copy_to_device(a.data(), a_gpu, m * k);
-  ex.copy_to_device(b.data(), b_gpu, k * n);
-  ex.copy_to_device(c.data(), c_gpu, m * n);
+  auto ev1 = ex.copy_to_device(a.data(), a_gpu, m * k);
+  ex.wait(ev1);
+  std::cout << "Copied a" << std::endl;
+  auto ev2 = ex.copy_to_device(b.data(), b_gpu, k * n);
+  ex.wait(ev2);
+  std::cout << "Copied b" << std::endl;
+  auto ev3 = ex.copy_to_device(c.data(), c_gpu, m * n);
+  ex.wait(ev3);
+  std::cout << "Copied c" << std::endl;
 
   benchmark<>::flops_units_t flops =
       benchmark<>::measure(reps, n_fl_ops, [&]() {
@@ -84,13 +95,17 @@ BENCHMARK(gemm, blas_level_3) {
   ex.template deallocate<ScalarT>(b_gpu);
   ex.template deallocate<ScalarT>(c_gpu);
 
+  ex.template clear();
+
+  // std::this_thread::sleep_for(std::chrono::milliseconds{300});
+
   return flops;
 }
 
 SUITE(ADD(gemm))
 
 auto level_3_ranges = nd_range(size_range(2, 1024, 2), size_range(2, 1024, 2),
-                               size_range(2, 1024, 2), value_range({"n"}),
+                               size_range(2, 1024, 2), value_range({"n", "t", "c"}),
                                value_range({"n", "t", "c"}));
 
 BENCHMARK_MAIN(level_3_ranges, 10)
