@@ -29,7 +29,7 @@
 #error "BlasTypes not defined before including blas3_gemm_def.hpp"
 #endif
 
-TYPED_TEST_CASE(BLAS_Test, BlasTypes);
+TYPED_TEST_SUITE(BLAS_Test, BlasTypes);
 
 REGISTER_PREC(float, 1e-4, gemm)
 REGISTER_PREC(double, 1e-8, gemm)

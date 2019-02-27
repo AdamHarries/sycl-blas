@@ -5,6 +5,8 @@ include(ExternalProject)
 
 set(SYCLBLAS_TEST ${CMAKE_CURRENT_SOURCE_DIR})
 set(SYCLBLAS_TEST_INCLUDE "${SYCLBLAS_TEST}/include")
+set(CMAKE_CXX_STANDARD 14)
+
 
 # Download and build googletest
 # The following operations are derived from the official advice on building googletest as a subproject,

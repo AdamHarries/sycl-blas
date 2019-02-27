@@ -25,12 +25,9 @@
 
 #include "blas_test.hpp"
 
-typedef ::testing::Types<blas_test_float<>,
-                         blas_test_double<>
-                         >
-    BlasTypes;
+typedef ::testing::Types<blas_test_float<>, blas_test_double<> > BlasTypes;
 
-TYPED_TEST_CASE(BLAS_Test, BlasTypes);
+TYPED_TEST_SUITE(BLAS_Test, BlasTypes);
 
 REGISTER_SIZE(2, rotg_test)
 REGISTER_STRD(1, rotg_test)

@@ -33,7 +33,7 @@ typedef ::testing::Types<blas_test_args<float>
                          >
     BlasTypes;
 
-TYPED_TEST_CASE(BLAS_Test, BlasTypes);
+TYPED_TEST_SUITE(BLAS_Test, BlasTypes);
 
 REGISTER_SIZE(::RANDOM_SIZE, sycl_buffer_test)
 REGISTER_STRD(::RANDOM_STRD, sycl_buffer_test)

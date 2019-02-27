@@ -23,12 +23,9 @@
  *
  **************************************************************************/
 #include "blas_test.hpp"
-typedef ::testing::Types<blas_test_float<>,
-                         blas_test_double<>
-                         >
-    BlasTypes;
+typedef ::testing::Types<blas_test_float<>, blas_test_double<> > BlasTypes;
 
-TYPED_TEST_CASE(BLAS_Test, BlasTypes);
+TYPED_TEST_SUITE(BLAS_Test, BlasTypes);
 
 REGISTER_SIZE(::RANDOM_SIZE, axpy_test_buff)
 REGISTER_STRD(::RANDOM_STRD, axpy_test_buff)
@@ -83,7 +80,7 @@ TYPED_TEST(BLAS_Test, axpy_test_buff) {
   }
 }
 
-TYPED_TEST_CASE(BLAS_Test, BlasTypes);
+TYPED_TEST_SUITE(BLAS_Test, BlasTypes);
 
 REGISTER_SIZE(::RANDOM_SIZE, axpy_test)
 REGISTER_STRD(::RANDOM_STRD, axpy_test)

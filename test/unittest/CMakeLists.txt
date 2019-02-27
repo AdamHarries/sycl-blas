@@ -35,6 +35,7 @@ file(GLOB SYCL_UNITTEST_SRCS
   ${SYCLBLAS_UNITTEST}/blas3/gemm/blas3_gemm_cc_test.cpp
   ${SYCLBLAS_UNITTEST}/blas3/gemm/blas3_gemm_cn_test.cpp
   ${SYCLBLAS_UNITTEST}/blas3/gemm/blas3_gemm_ct_test.cpp
+  ${SYCLBLAS_UNITTEST}/blas3/auxiliary/tsgemm.cpp
 
   # Blas buffer tests
   ${SYCLBLAS_UNITTEST}/buffers/sycl_buffer_test.cpp

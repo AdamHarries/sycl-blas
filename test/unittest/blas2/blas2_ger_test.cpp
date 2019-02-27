@@ -25,12 +25,9 @@
 
 #include "blas_test.hpp"
 
-typedef ::testing::Types<blas_test_float<>,
-                         blas_test_double<>
-                         >
-    BlasTypes;
+typedef ::testing::Types<blas_test_float<>, blas_test_double<> > BlasTypes;
 
-TYPED_TEST_CASE(BLAS_Test, BlasTypes);
+TYPED_TEST_SUITE(BLAS_Test, BlasTypes);
 
 REGISTER_PREC(float, 1e-4, ger_test)
 REGISTER_PREC(double, 1e-8, ger_test)
