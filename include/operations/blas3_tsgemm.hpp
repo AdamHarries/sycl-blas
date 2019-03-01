@@ -29,19 +29,19 @@
 
 #include <sstream>
 
-#define dbg(expr)                            \
-  [&]() -> decltype(expr) {                  \
-    auto val = expr;                         \
-    std::cerr << #expr " = " << val << ", "; \
-    return val;                              \
+#define dbg(expr)                                    \
+  [&]() -> decltype(expr) {                          \
+    auto __macro_val = expr;                         \
+    std::cerr << #expr " = " << __macro_val << ", "; \
+    return __macro_val;                              \
   }()
 
-#define dbg_str(expr)           \
-  [&]() -> std::string {        \
-    std::stringstream sstr;     \
-    auto val = expr;            \
-    sstr << #expr " = " << val; \
-    return sstr.str();          \
+#define dbg_str(expr)                   \
+  [&]() -> std::string {                \
+    std::stringstream sstr;             \
+    auto __macro_val = expr;            \
+    sstr << #expr " = " << __macro_val; \
+    return sstr.str();                  \
   }()
 
 template <typename IndexType, IndexType NumTiles = 8,
@@ -85,8 +85,8 @@ struct TSGEMMTile {
 // typename OutAccessor, typename TempAcc, typename LhsMapper,
 // typename RhsMapper, typename Scratch, typename Index,
 // typename PanelParameters, bool Vectorizable, bool NoEdge, boolIsFinal>
-template <typename RHS0, typename RHS1, typename ScratchT, typename LocalT,
-          typename T, int WgSize, bool TransA, bool TransB, typename tile_type>
+template <typename RHS0, typename RHS1, typename ScratchT, typename T,
+          int WgSize, bool TransA, bool TransB, typename tile_type>
 class TallSkinnyGemmFactory {
  public:
   using ValueType = T;
@@ -102,10 +102,9 @@ class TallSkinnyGemmFactory {
   ValueType beta;
 
   ScratchT scratch;
-  LocalT temp_res;
 
   // OutAccessor out_res;
-  // OutAccessor temp_res;
+
   // const LhsMapper lhs;
   // const RhsMapper rhs;
   // Scratch scratch;
@@ -143,10 +142,11 @@ class TallSkinnyGemmFactory {
   /* the number of groups, dimension k */
   const IndexType group__k;
 
-  TallSkinnyGemmFactory(RHS0 A, RHS0 B, RHS1 C, IndexType M, IndexType N,
-                        IndexType K, T alpha, T beta, ScratchT scratch,
-                        const IndexType group_count_m,
-                        const IndexType group_count_n, const IndexType group__k)
+  inline TallSkinnyGemmFactory(RHS0 A, RHS0 B, RHS1 C, IndexType M, IndexType N,
+                               IndexType K, T alpha, T beta, ScratchT scratch,
+                               const IndexType group_count_m,
+                               const IndexType group_count_n,
+                               const IndexType group__k)
       : _A(A),
         _B(B),
         _C(C),
@@ -160,289 +160,249 @@ class TallSkinnyGemmFactory {
         group_count_n(group_count_n),
         group__k(group__k) {}
 
-#ifdef TESTING_GUARD
-  inline void eval(IndexType lcl_tid, IndexType wg_id) noexcept {
-#else
-  inline void eval(cl::sycl::nd_item<1> id) noexcept {
-#endif
-
-/* references to the matrices */
-#ifdef TESTING_GUARD
-      // Use this to see if the matrices are std::vectors
-      auto A = _A.data();
-  auto B = _B.data();
-  auto C = _C.data();
-  auto tmp_ptr = temp_res.data();
-  auto scratch_ptr = scratch.data();
-#else
-    auto A = _A.getData().get_pointer().get() + _A.getDisp();
-    auto B = _B.getData().get_pointer().get() + _B.getDisp();
-    auto C = _C.getData().get_pointer().get() + _C.getDisp();
+  inline void eval(cl::sycl::nd_item<1> id) const noexcept {
+    /* references to the matrices */
+    auto A = _A.get_pointer().get();  // + _A.get_offset();
+    auto B = _B.get_pointer().get();  // + _B.get_offset();
+    auto C = _C.get_pointer().get();  // + _C.get_offset();
     /* references to the temporary memory, scratch memory, and rhs scratch
      * memory*/
-    auto tmp_ptr = temp_res.get_pointer().get();
+
     auto scratch_ptr = scratch.get_pointer().get();
-#endif
 
-  auto rhs_scratch_ptr = scratch_ptr + (2 * tile_size_dim_m * tile_size_dim_k);
+    auto rhs_scratch_ptr =
+        scratch_ptr + (2 * tile_size_dim_m * tile_size_dim_k);
 
-  T private_res[work_per_thread_m * work_per_thread_n];
+    T private_res[work_per_thread_m * work_per_thread_n];
 
-/* workgroup id */
-#ifndef TESTING_GUARD
-  const IndexType wg_id = id.get_group(0);
-#endif
-/* Local thread id */
-#ifndef TESTING_GUARD
-  const IndexType lcl_tid = id.get_local_id();
-#endif
+    /* workgroup id */
+    const IndexType wg_id = id.get_group(0);
+    /* Local thread id */
+    const IndexType lcl_tid = id.get_local_id(0);
 
-  std::cerr << "-----------------------------------------" << std::endl;
-  std::cerr << "Workgroup id: " << wg_id << ", Local id: " << lcl_tid
-            << std::endl;
-  std::cerr << "-----------------------------------------" << std::endl;
+    /* Local ID Column */
+    const IndexType n_lcl_tid = lcl_tid / local_thread_size_m;
 
-  /* Local ID Column */
-  const IndexType n_lcl_tid = lcl_tid / local_thread_size_m;
+    /* Local ID row */
+    const IndexType m_lcl_tid = lcl_tid - (n_lcl_tid * local_thread_size_m);
 
-  /* Local ID row */
-  const IndexType m_lcl_tid = lcl_tid - (n_lcl_tid * local_thread_size_m);
+    /* workgroup id, local column */
+    const IndexType tmp = wg_id / group_count_m;
 
-  /* workgroup id, local column */
-  const IndexType tmp = wg_id / group_count_m;
+    /* Workgroup id row */
+    const IndexType mgroup_id = wg_id % group_count_m;
+    // wg_id - (tmp * group_count_m);  // isn't this always 0???
 
-  /* Workgroup id row */
-  const IndexType mgroup_id = wg_id % group_count_m;
-  // wg_id - (tmp * group_count_m);  // isn't this always 0???
+    const IndexType kgroup_id = (wg_id / group_count_m) / group_count_n;
 
-  const IndexType kgroup_id = (wg_id / group_count_m) / group_count_n;
+    const IndexType ngroup_id = wg_id % group_count_n;
 
-  const IndexType ngroup_id = wg_id % group_count_n;
+    // tmp - (kgroup_id * group_count_n);
 
-  // tmp - (kgroup_id * group_count_n);
+    /* register offsets */
+    const IndexType global_mix_offset = mgroup_id * tile_size_dim_m;
+    const IndexType global_nix_offset = ngroup_id * tile_size_dim_n;
+    const IndexType global_kix_offset = kgroup_id * tile_size_dim_k;
 
-  /* register offsets */
-  const IndexType global_mix_offset = mgroup_id * tile_size_dim_m;
-  const IndexType global_nix_offset = ngroup_id * tile_size_dim_n;
-  const IndexType global_kix_offset = kgroup_id * tile_size_dim_k;
+    /* initialise the private res summation registers */
+    for (auto i = 0; i < work_per_thread_m * work_per_thread_n; i++) {
+      private_res[i] = static_cast<T>(0);
+    }
 
-  /* initialise the private res summation registers */
-  for (auto i = 0; i < work_per_thread_m * work_per_thread_n; i++) {
-    private_res[i] = static_cast<T>(0);
-  }
+    /* Load tiles, LHS and RHS */
 
-  /* Load tiles, LHS and RHS */
+    // Tile LHS
+    // for now, assume that the LHS isn't transposed.
+    load_tile(A, scratch_ptr, lcl_tid, global_mix_offset, global_kix_offset, 0,
+              work_per_thread_m, M, K);
+    // Tile RHS
+    // load_and_transpose_tile(B, rhs_scratch_ptr, lcl_tid, global_nix_offset,
+    //                         global_kix_offset, 0, work_per_thread_n, K, N);
 
-  // Tile LHS
-  // for now, assume that the LHS isn't transposed.
-  load_tile(A, scratch_ptr, lcl_tid, global_mix_offset, global_kix_offset, 0,
-            work_per_thread_m, M, K);
-  // Tile RHS
-  load_and_transpose_tile(B, rhs_scratch_ptr, lcl_tid, global_nix_offset,
-                          global_kix_offset, 0, work_per_thread_n, K, N);
-
-#ifndef TESTING_GUARD
-  id.barrier(cl::sycl::access::fence_space::local_space);
-#endif
-
-  const IndexType start_lhs_index = m_lcl_tid;
-  const IndexType start_rhs_index = n_lcl_tid;
-  IndexType firstHalf = 0;
-  /* Loop over all tiles allocated to this particular workgroup size */
-  do {
-// Synchronise
-#ifndef TESTING_GUARD
     id.barrier(cl::sycl::access::fence_space::local_space);
-#endif
-    IndexType next_half = firstHalf + 1;
-    // If we need ot swap, or not?
-    if (next_half < num_tiles) {
-      /* Load tiles, LHS and RHS into local memory */
-      // Tile LHS
-      load_tile(A, scratch_ptr, lcl_tid, global_mix_offset, global_kix_offset,
-                next_half, work_per_thread_m, M, K);
-      // Tile RHS
-      load_and_transpose_tile(B, rhs_scratch_ptr, lcl_tid, global_nix_offset,
-                              global_kix_offset, next_half, work_per_thread_n,
-                              K, N);
-    }
-    // Calculate offsets into the temporary memory.
 
-    IndexType lhs_offset =
-        ((firstHalf & 1) * (tile_size_dim_m * tile_size_dim_k)) +
-        start_lhs_index;
-    IndexType rhs_offset =
-        ((firstHalf & 1) * (tile_size_dim_k * tile_size_dim_n)) +
-        start_rhs_index;
+    const IndexType start_lhs_index = m_lcl_tid;
+    const IndexType start_rhs_index = n_lcl_tid;
+    IndexType firstHalf = 0;
+    /* Loop over all tiles allocated to this particular workgroup size */
+    do {
+      // Synchronise
 
-    /* Loop over the values of a single tile */
-    for (IndexType k = 0; k < tile_size_dim_k; k++) {
-      auto idx = 0;
-      auto rhs_index = 0;
-      for (IndexType wLPTN = 0; wLPTN < work_per_thread_n; wLPTN++) {
-        // load a RHS element from the scratch buffer
-        ValueType privateRhs = rhs_scratch_ptr[rhs_index + rhs_offset];
+      id.barrier(cl::sycl::access::fence_space::local_space);
 
-        IndexType lhs_index = 0;
-        for (IndexType wLPTM = 0; wLPTM < work_per_thread_m; wLPTM++) {
-          // load a LHS element from the scratch buffer
-          ValueType privateLhs = scratch_ptr[lhs_index + lhs_offset];
+      IndexType next_half = firstHalf + 1;
+      // If we need ot swap, or not?
+      if (next_half < num_tiles) {
+        /* Load tiles, LHS and RHS into local memory */
+        // Tile LHS
+        load_tile(A, scratch_ptr, lcl_tid, global_mix_offset, global_kix_offset,
+                  next_half, work_per_thread_m, M, K);
+        // Tile RHS
+        load_and_transpose_tile(B, rhs_scratch_ptr, lcl_tid, global_nix_offset,
+                                global_kix_offset, next_half, work_per_thread_n,
+                                K, N);
+      }
+      // Calculate offsets into the temporary memory.
 
-          // Perform a manual MAD.
-          private_res[wLPTM + idx] = lcl_tid;
-          // private_res[wLPTM + idx] + (privateLhs * privateRhs);
+      IndexType lhs_offset =
+          ((firstHalf & 1) * (tile_size_dim_m * tile_size_dim_k)) +
+          start_lhs_index;
+      IndexType rhs_offset =
+          ((firstHalf & 1) * (tile_size_dim_k * tile_size_dim_n)) +
+          start_rhs_index;
 
-          lhs_index += work_per_thread_m;
+      /* Loop over the values of a single tile */
+
+      for (IndexType k = 0; k < tile_size_dim_k; k++) {
+        auto idx = 0;
+        auto rhs_index = 0;
+        for (IndexType wLPTN = 0; wLPTN < work_per_thread_n; wLPTN++) {
+          // load a RHS element from the scratch buffer
+
+          ValueType privateRhs = rhs_scratch_ptr[rhs_index + rhs_offset];
+
+          IndexType lhs_index = 0;
+          for (IndexType wLPTM = 0; wLPTM < work_per_thread_m; wLPTM++) {
+            // load a LHS element from the scratch buffer
+            ValueType privateLhs = scratch_ptr[lhs_index + lhs_offset];
+
+            // Perform a manual MAD.
+            private_res[wLPTM + idx] =  // lcl_tid;
+                private_res[wLPTM + idx] + (privateLhs * privateRhs);
+
+            lhs_index += work_per_thread_m;
+          }
+          idx += work_per_thread_m;
+          rhs_index += work_per_thread_n;
         }
-        idx += work_per_thread_m;
-        rhs_index += work_per_thread_n;
+        lhs_offset += tile_size_dim_m;
+        rhs_offset += tile_size_dim_n;
       }
-      lhs_offset += tile_size_dim_m;
-      rhs_offset += tile_size_dim_n;
-    }
-    // Next tile
-    firstHalf++;
-  } while (firstHalf < num_tiles);
+      // Next tile
+      firstHalf++;
+    } while (firstHalf < num_tiles);
 
-#ifndef TESTING_GUARD
-  id.barrier(cl::sycl::access::fence_space::local_space);
-#endif
+    id.barrier(cl::sycl::access::fence_space::local_space);
 
-  // Store the final results in C
-  IndexType global_col_offset = (ngroup_id * tile_size_dim_n) + (n_lcl_tid);
-  IndexType global_row_offset = (mgroup_id * tile_size_dim_m) + (m_lcl_tid);
-  IndexType global_k_offset = kgroup_id * M * N;
-  IndexType c_index = global_col_offset * M;
-  IndexType private_index_offset = 0;
+    // Store the final results in C
+    IndexType global_col_offset = (ngroup_id * tile_size_dim_n) + (n_lcl_tid);
+    IndexType global_row_offset = (mgroup_id * tile_size_dim_m) + (m_lcl_tid);
+    IndexType global_k_offset = kgroup_id * M * N;
+    IndexType c_index = global_col_offset * M;
+    IndexType private_index_offset = 0;
 
-  for (IndexType wLPTN = 0; wLPTN < work_per_thread_n; wLPTN++) {
-    IndexType private_index = private_index_offset;
+    for (IndexType wLPTN = 0; wLPTN < work_per_thread_n; wLPTN++) {
+      IndexType private_index = private_index_offset;
 
-    // Disregard anything involving `i` - it simply specifies a stride
-    // for (IndexType i = 0; i < PacketSize; i++) {
-    IndexType global_col = global_col_offset;  // + i;
-    IndexType global_row = global_row_offset;
-    for (IndexType wLPTM = 0; wLPTM < work_per_thread_m; wLPTM++) {
-      if (/*(NoEdge) ||*/ (global_row < M && global_col < N)) {
-        // Store the final results in C
-        C[c_index + global_row + global_k_offset] =
-            private_res[wLPTM + private_index];
+      // Disregard anything involving `i` - it simply specifies a stride
+      // for (IndexType i = 0; i < PacketSize; i++) {
+      IndexType global_col = global_col_offset;  // + i;
+      IndexType global_row = global_row_offset;
+      for (IndexType wLPTM = 0; wLPTM < work_per_thread_m; wLPTM++) {
+        if (/*(NoEdge) ||*/ (global_row < M && global_col < N)) {
+          // Store the final results in C
+
+          C[c_index + global_row + global_k_offset] =
+              private_res[wLPTM + private_index];
+        }
       }
+      c_index += M;
+      private_index += (work_per_thread_m);
+      //}
+      global_col_offset += local_thread_size_n;
+      c_index = global_col_offset * M;
+      private_index_offset += work_per_thread_m;
     }
-    c_index += M;
-    private_index += (work_per_thread_m);
-    //}
-    global_col_offset += local_thread_size_n;
-    c_index = global_col_offset * M;
-    private_index_offset += work_per_thread_m;
   }
-}
-// We need two load functions: one that loads normally, one that
-// loads + transposes on load.
+  // We need two load functions: one that loads normally, one that
+  // loads + transposes on load.
 
-// Load a "left hand" tile, or "right hand transposed" tile
-// What is NoEdge for??
-template <typename GlobalPointerType, typename LocalPointerType>
-static inline void load_tile(GlobalPointerType glb_ptr,
-                             LocalPointerType lcl_ptr,
-                             IndexType linear_local_thread_id,
-                             IndexType global_m_offset,
-                             IndexType global_k_offset, IndexType next_half,
-                             IndexType load_per_thread_lhs, IndexType M,
-                             IndexType K) {
-  std::cerr << std::endl << "Load Tile" << std::endl;
-  // Our rhs linear id is the same as our thread id to start with
-  IndexType local_lhs_linear_id = dbg(linear_local_thread_id);
-  // Local id offset depends on whether we're on the first or second "half" of
-  // the scratch memory. If we're on the first half (i.e. the lowest bit is
-  // set to 0), then the offset is 0. If we're on the second half (i.e. the
-  // lowest bit is set to 1), then the offset is the linear size of a RHS
-  // tile: tile_size_dim_m * tile_size_dim_k
-  IndexType linear_local_id_offset =
-      (next_half & 1) * (tile_size_dim_m * tile_size_dim_k);
+  // Load a "left hand" tile, or "right hand transposed" tile
+  // What is NoEdge for??
+  template <typename GlobalPointerType, typename LocalPointerType>
+  static inline void load_tile(GlobalPointerType glb_ptr,
+                               LocalPointerType lcl_ptr,
+                               IndexType linear_local_thread_id,
+                               IndexType global_m_offset,
+                               IndexType global_k_offset, IndexType next_half,
+                               IndexType load_per_thread_lhs, IndexType M,
+                               IndexType K) {
+    // Our rhs linear id is the same as our thread id to start with
+    IndexType local_lhs_linear_id = linear_local_thread_id;
 
-  for (IndexType lPTL = 0; lPTL < load_per_thread_lhs; lPTL++) {
-    IndexType local_thread_k = local_lhs_linear_id / tile_size_dim_m;
-    IndexType local_thread_m =
-        // dbg(local_lhs_linear_id % local_thread_k);
-        local_lhs_linear_id - (local_thread_k * tile_size_dim_m);
+    // Local id offset depends on whether we're on the first or second "half" of
+    // the scratch memory. If we're on the first half (i.e. the lowest bit is
+    // set to 0), then the offset is 0. If we're on the second half (i.e. the
+    // lowest bit is set to 1), then the offset is the linear size of a RHS
+    // tile: tile_size_dim_m * tile_size_dim_k
+    IndexType linear_local_id_offset =
+        (next_half & 1) * (tile_size_dim_m * tile_size_dim_k);
 
-    IndexType global_m_index = global_m_offset + local_thread_m;
-    IndexType global_k_index = global_k_offset + local_thread_k;
-    IndexType linear_local_id_index =
-        local_thread_m + (local_thread_k * tile_size_dim_m);
+    for (IndexType lPTL = 0; lPTL < load_per_thread_lhs; lPTL++) {
+      IndexType local_thread_k = local_lhs_linear_id / tile_size_dim_m;
+      IndexType local_thread_m =
+          local_lhs_linear_id - (local_thread_k * tile_size_dim_m);
 
-    // We can ignore this check, as we're not using packet types right now
-    // if (/*(NoEdge) ||*/ ((global_m_index < M) && (global_k_index < K))) {
-    // load from matrix according to global_m_index and
-    // global_k_index
+      IndexType global_k_index = global_k_offset + local_thread_k;
+      IndexType global_m_index = global_m_offset + local_thread_m;
 
-    std::cerr << "glb_ptr[" << dbg_str(global_m_index + (global_k_index * M))
-              << "]\n";
+      IndexType linear_local_id_index =
+          local_thread_m + (local_thread_k * tile_size_dim_m);
 
-    T val = glb_ptr[global_m_index + (global_k_index * M)];
-    std::cerr << "Val: " << val << std::endl;
+      // We can ignore this check, as we're not using packet types right now
+      // if (/*(NoEdge) ||*/ ((global_m_index < M) && (global_k_index < K))) {
+      // load from matrix according to global_m_index and
+      // global_k_index
 
-    dbg(linear_local_id_index);
-    dbg(linear_local_id_offset);
-    std::cerr << std::endl;
+      T val = glb_ptr[global_m_index + (global_k_index * M)];
 
-    std::cerr << "lcl_ptr["
-              << dbg_str(linear_local_id_index + linear_local_id_offset)
-              << "]\n";
+      lcl_ptr[linear_local_id_index + linear_local_id_offset] = val;
+      // }
 
-    // check we're not writing beyond the range of the tile
-    lcl_ptr[linear_local_id_index + linear_local_id_offset] = val;
-    // }
-
-    local_lhs_linear_id += (local_thread_size_n * local_thread_size_m);
-  }
-}
-
-template <typename GlobalPointerType, typename LocalPointerType>
-static inline void load_and_transpose_tile(
-    GlobalPointerType glb_ptr, LocalPointerType lcl_ptr,
-    IndexType linear_local_thread_id, IndexType global_n_offset,
-    IndexType global_k_offset, IndexType next_half,
-    IndexType load_per_thread_rhs, IndexType K, IndexType N) {
-  // std::cerr << "Load Tile and Transpose" << std::endl;
-  // Our rhs linear id is the same as our thread id to start with
-  IndexType local_rhs_linear_id = linear_local_thread_id;
-  // Local id offset depends on whether we're on the first or second "half" of
-  // the scratch memory. If we're on the first half (i.e. the lowest bit is
-  // set to 0), then the offset is 0. If we're on the second half (i.e. the
-  // lowest bit is set to 1), then the offset is the linear size of a RHS
-  // tile: tile_size_dim_k * tile_size_dim_n
-  IndexType linear_local_id_offset =
-      (next_half & 1) * (tile_size_dim_k * tile_size_dim_n);
-  for (IndexType lPTR = 0; lPTR < load_per_thread_rhs; lPTR++) {
-    // Calculate the index in the 'n' dimension that this thread should access
-    IndexType local_thread_n = local_rhs_linear_id / tile_size_dim_k;
-    // Calculate the index in the 'k' dimension that this thread should access
-    IndexType local_thread_k =
-        local_rhs_linear_id - (tile_size_dim_k * local_thread_n);
-
-    IndexType global_k_index = global_k_offset + local_thread_k;
-    IndexType global_n_index = global_n_offset + local_thread_n;
-
-    // Transpose RHS on the fly
-    // IndexType linear_local_id_index =
-    //     local_thread_n + (local_thread_k * tile_size_dim_n);
-    IndexType linear_local_id_index =
-        local_thread_k + (local_thread_n * tile_size_dim_k);
-
-    std::cout << std::endl;
-
-    auto val = T(0);
-    if (/*(NoEdge) ||*/ ((global_k_index < K) && (global_n_index < N))) {
-      val = glb_ptr[global_n_index + (global_k_index * N)];
+      local_lhs_linear_id += (local_thread_size_n * local_thread_size_m);
     }
-
-    lcl_ptr[linear_local_id_index + linear_local_id_offset] = val;
-    local_rhs_linear_id += local_thread_size_n * local_thread_size_m;
   }
-}
-}
-;
+
+  template <typename GlobalPointerType, typename LocalPointerType>
+  static inline void load_and_transpose_tile(
+      GlobalPointerType glb_ptr, LocalPointerType lcl_ptr,
+      IndexType linear_local_thread_id, IndexType global_n_offset,
+      IndexType global_k_offset, IndexType next_half,
+      IndexType load_per_thread_rhs, IndexType K, IndexType N) {
+    // Our rhs linear id is the same as our thread id to start with
+    IndexType local_rhs_linear_id = linear_local_thread_id;
+    // Local id offset depends on whether we're on the first or second "half" of
+    // the scratch memory. If we're on the first half (i.e. the lowest bit is
+    // set to 0), then the offset is 0. If we're on the second half (i.e. the
+    // lowest bit is set to 1), then the offset is the linear size of a RHS
+    // tile: tile_size_dim_k * tile_size_dim_n
+    IndexType linear_local_id_offset =
+        (next_half & 1) * (tile_size_dim_k * tile_size_dim_n);
+    for (IndexType lPTR = 0; lPTR < load_per_thread_rhs; lPTR++) {
+      // Calculate the index in the 'n' dimension that this thread should access
+      IndexType local_thread_n = local_rhs_linear_id / tile_size_dim_k;
+      // Calculate the index in the 'k' dimension that this thread should access
+      IndexType local_thread_k =
+          local_rhs_linear_id - (tile_size_dim_k * local_thread_n);
+
+      IndexType global_k_index = global_k_offset + local_thread_k;
+      IndexType global_n_index = global_n_offset + local_thread_n;
+
+      // Transpose RHS on the fly
+      // IndexType linear_local_id_index =
+      //     local_thread_n + (local_thread_k * tile_size_dim_n);
+      IndexType linear_local_id_index =
+          local_thread_k + (local_thread_n * tile_size_dim_k);
+
+      auto val = T(0);
+      if (/*(NoEdge) ||*/ ((global_k_index < K) && (global_n_index < N))) {
+        val = glb_ptr[global_n_index + (global_k_index * N)];
+      }
+
+      lcl_ptr[linear_local_id_index + linear_local_id_offset] = val;
+      local_rhs_linear_id += local_thread_size_n * local_thread_size_m;
+    }
+  }
+};
 
 #endif  // BLAS3_TSGEMM_HPP
