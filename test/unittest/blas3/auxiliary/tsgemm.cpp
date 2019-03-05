@@ -44,6 +44,7 @@ TYPED_TEST(BLAS_Test, tsgemm_matmul) {
   using ExecutorType = typename TypeParam::executor_t;
   using TestClass = BLAS_Test<TypeParam>;
   using test = class tsgemm_matmul;
+  ScalarT prec = 0.01;  // TestClass::template test_prec<test>();
 
   size_t m = 8;
   size_t k = 4;
@@ -159,16 +160,20 @@ TYPED_TEST(BLAS_Test, tsgemm_matmul) {
 
   ex.wait(event);
 
-  std::cerr << "A before: " << std::endl;
+  for (auto i = 0; i < C.size(); ++i) {
+    ASSERT_NEAR(C[i], C_expt[i], prec);
+  }
+
+  DEBUG_PRINT(std::cerr << "A before: " << std::endl);
   MatrixPrinter<true>::eval(k, m, A);
 
-  std::cerr << "B before: " << std::endl;
+  DEBUG_PRINT(std::cerr << "B before: " << std::endl);
   MatrixPrinter<true>::eval(n, k, B);
 
   // the matrix is now in tsgf._C
-  std::cerr << "C expected: " << std::endl;
+  DEBUG_PRINT(std::cerr << "C expected: " << std::endl);
   MatrixPrinter<true>::eval(n, m, C_expt);
 
-  std::cerr << "C afterwards: " << std::endl;
+  DEBUG_PRINT(std::cerr << "C afterwards: " << std::endl);
   MatrixPrinter<true>::eval(n, m, C);
 }

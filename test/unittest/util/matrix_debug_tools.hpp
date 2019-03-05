@@ -42,7 +42,8 @@ struct MatrixPrinter {
 template <>
 struct MatrixPrinter<true> {
   template <typename IxType, typename VectorT>
-  static void eval(IxType w, IxType h, VectorT v) {
+  static inline void eval(IxType w, IxType h, VectorT v) {
+#ifdef VERBOSE
     for (IxType i = 0; i < h; i++) {
       std::cerr << "[";
       for (IxType j = 0; j < w; j++) {
@@ -53,13 +54,15 @@ struct MatrixPrinter<true> {
       }
       std::cerr << "]\n";
     }
+#endif
   }
 };
 
 template <>
 struct MatrixPrinter<false> {
   template <typename IxType, typename VectorT>
-  static void eval(IxType w, IxType h, VectorT v) {
+  static inline void eval(IxType w, IxType h, VectorT v) {
+#ifdef VERBOSE
     for (IxType i = 0; i < h; i++) {
       std::cerr << "[";
       for (IxType j = 0; j < w; j++) {
@@ -70,6 +73,7 @@ struct MatrixPrinter<false> {
       }
       std::cerr << "]\n";
     }
+#endif
   }
 };
 

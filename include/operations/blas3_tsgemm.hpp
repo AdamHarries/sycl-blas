@@ -211,13 +211,15 @@ class TallSkinnyGemmFactory {
 
     /* Load tiles, LHS and RHS */
 
-    // Tile LHS
-    // for now, assume that the LHS isn't transposed.
-    load_tile(A, scratch_ptr, lcl_tid, global_mix_offset, global_kix_offset, 0,
-              work_per_thread_m, M, K);
+    // Is there any reason why we "preload" these here? We have a do while
+    // loop...
+
+    // Tile LHS for now, assume that the LHS isn't transposed.
+    // load_tile(A, scratch_ptr, lcl_tid, global_mix_offset, global_kix_offset,
+    // 0, work_per_thread_m, M, K);
     // Tile RHS
     // load_and_transpose_tile(B, rhs_scratch_ptr, lcl_tid, global_nix_offset,
-    //                         global_kix_offset, 0, work_per_thread_n, K, N);
+    // global_kix_offset, 0, work_per_thread_n, K, N);
 
     id.barrier(cl::sycl::access::fence_space::local_space);
 
