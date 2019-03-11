@@ -29,7 +29,7 @@ project(syclblas_unittest)
 set(SYCLBLAS_UNITTEST ${CMAKE_CURRENT_SOURCE_DIR})
 set(SYCLBLAS_TEST_INCLUDE "${SYCLBLAS_TEST}/include")
 
-include_directories(${SYCLBLAS_TEST} ${BLAS_INCLUDE_DIRS})
+include_directories(${SYCLBLAS_TEST} ${BLAS_INCLUDE_DIRS} ${SYCLBLAS_SRC})
 
 # compiling tests
 set(SYCL_UNITTEST_SRCS
@@ -52,6 +52,9 @@ set(SYCL_UNITTEST_SRCS
   ${SYCLBLAS_UNITTEST}/blas3/gemm/blas3_gemm_nt_test.cpp
   ${SYCLBLAS_UNITTEST}/blas3/gemm/blas3_gemm_tn_test.cpp
   ${SYCLBLAS_UNITTEST}/blas3/gemm/blas3_gemm_tt_test.cpp
+
+
+
   # Blas buffer tests
   ${SYCLBLAS_UNITTEST}/buffers/sycl_buffer_test.cpp
 )
@@ -68,10 +71,32 @@ endif()
 
 foreach(blas_test ${SYCL_UNITTEST_SRCS})
   get_filename_component(test_exec ${blas_test} NAME_WE)
+
   set(test_exec, ${blas_test})
   add_executable(${test_exec} main.cpp ${blas_test})
   set_property(TARGET ${test_exec} PROPERTY CXX_STANDARD 11)
   add_dependencies(${test_exec} gtest_main)
+
+  target_link_libraries(${test_exec} PUBLIC gtest_main ${BLAS_LIBRARIES} sycl_blas ComputeCpp::ComputeCpp)
+  add_test(NAME ${test_exec} COMMAND ${CMAKE_CURRENT_BINARY_DIR}/${test_exec})
+  message("-- Created google test ${test_exec}")
+  install(TARGETS ${test_exec} RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/sycl_blas/bin)
+
+endforeach()
+
+set(SYCL_INPROGRESS_TESTS
+${SYCLBLAS_UNITTEST}/blas3/tsgemm.cpp
+)
+
+foreach(blas_test ${SYCL_INPROGRESS_TESTS})
+  get_filename_component(test_exec ${blas_test} NAME_WE)
+
+  set(test_exec, ${blas_test})
+  add_executable(${test_exec} main.cpp ${blas_test})
+  add_sycl_to_target(TARGET ${test_exec} SOURCES ${blas_test} main.cpp)
+  set_property(TARGET ${test_exec} PROPERTY CXX_STANDARD 11)
+  add_dependencies(${test_exec} gtest_main)
+
   target_link_libraries(${test_exec} PUBLIC gtest_main ${BLAS_LIBRARIES} sycl_blas ComputeCpp::ComputeCpp)
   add_test(NAME ${test_exec} COMMAND ${CMAKE_CURRENT_BINARY_DIR}/${test_exec})
   message("-- Created google test ${test_exec}")

@@ -122,9 +122,10 @@ TYPED_TEST(BLAS_Test, gemm) {
 
           for (int bs = 0; bs < batch_size; bs++) {
             // system gemm implementation
-            gemm(ta_str, tb_str, m, n, k, alpha, a_m.data() + (bs * m * k), lda,
-                 b_m.data() + (bs * n * k), ldb, beta,
-                 c_m_cpu.data() + (bs * m * n), m);
+            reference_blas::gemm(ta_str, tb_str, m, n, k, alpha,
+                                 a_m.data() + (bs * m * k), lda,
+                                 b_m.data() + (bs * n * k), ldb, beta,
+                                 c_m_cpu.data() + (bs * m * n), m);
 
             ex.get_policy_handler().copy_to_device(a_m.data() + (bs * m * k),
                                                    m_a_gpu + (bs * m * k),

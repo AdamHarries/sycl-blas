@@ -56,6 +56,8 @@ ENABLE_SYSTEM_GER(double, dger_)
 
 #undef ENABLE_SYSTEM_GER
 
+namespace reference_blas {
+
 #define ENABLE_SYSTEM_GEMM(_type, _system_name)                               \
   extern "C" void _system_name(                                               \
       const char *, const char *, const int *, const int *, const int *,      \
@@ -69,8 +71,10 @@ ENABLE_SYSTEM_GER(double, dger_)
   }
 
 ENABLE_SYSTEM_GEMM(float, sgemm_)
-ENABLE_SYSTEM_GEMM(double, dgemm_)
+// ENABLE_SYSTEM_GEMM(double, dgemm_)
 
 #undef ENABLE_SYSTEM_GEMM
+
+}  // namespace reference_blas
 
 #endif /* end of include guard: SYSTEM_REFERENCE_BLAS_HPP */

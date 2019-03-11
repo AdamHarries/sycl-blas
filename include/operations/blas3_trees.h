@@ -200,6 +200,138 @@ make_gemm(RHS1 buffer_a, RHS1 buffer_b, RHS2 buffer_c, T alpha, T beta,
       buffer_a, buffer_b, buffer_c, alpha, beta, batch_size);
 }
 
+// template <typename IndexType, IndexType NumTiles = 8,
+//           IndexType TileSizeDimM = 8, IndexType TileSizeDimK = 16,
+//           IndexType TileSizeDimN = 16, IndexType WorkPerThreadM = 16,
+//           IndexType WorkPerThreadN = 1, IndexType LocalThreadSizeN = 4,
+//           IndexType LocalThreadSizeM = 4>
+// struct TSGEMMTile {
+//   /* The number of tiles to be processed */
+//   static constexpr IndexType num_tiles = NumTiles;
+//   /* tile size, dimension M */
+//   static constexpr IndexType tile_size_dim_m = TileSizeDimM;
+//   /* tile size, dimension N */
+//   static constexpr IndexType tile_size_dim_n = TileSizeDimN;
+//   /* tile size, dimension K */
+//   static constexpr IndexType tile_size_dim_k = TileSizeDimK;
+
+//   /* workload per thread M */
+//   static constexpr IndexType work_per_thread_m = WorkPerThreadM;
+//   /* workload per thread N */
+//   static constexpr IndexType work_per_thread_n = WorkPerThreadN;
+
+//   /* local thread size n */
+//   static constexpr IndexType local_thread_size_n = LocalThreadSizeN;
+//   /* local thread size m */
+//   static constexpr IndexType local_thread_size_m = LocalThreadSizeM;
+
+//   /*!
+//    * @brief Get tile type as human readable string.
+//    */
+//   // static inline std::string get_type_string() noexcept {
+//   //   return std::string("Tile<") + std::to_string(item_rows) + ", " +
+//   //          std::to_string(item_cols) + ", " + std::to_string(wg_rows) + ",
+//   "
+//   //          + std::to_string(wg_cols) + ", " + std::to_string(tl_rows) + ",
+//   "
+//   //          + std::to_string(tl_cols) + ">";
+//   // }
+// };
+
+// // So far, more or less just copied from eigen.
+// // template <typename OutScalar, typename LhsScalar, typename RhsScalar,
+// // typename OutAccessor, typename TempAcc, typename LhsMapper,
+// // typename RhsMapper, typename Scratch, typename Index,
+// // typename PanelParameters, bool Vectorizable, bool NoEdge, boolIsFinal>
+// template <typename RHS0, typename RHS1, typename ScratchT, typename T,
+//           int WgSize, bool TransA, bool TransB, typename tile_type>
+// class TallSkinnyGemmFactory {
+//  public:
+//   using ValueType = T;
+//   // using IndexType = typename std::make_signed<typename
+//   // RHS0::IndexType>::type;
+//   using IndexType = int;
+
+//   RHS0 _A;
+//   RHS0 _B;
+//   RHS1 _C;
+
+//   ValueType alpha;
+//   ValueType beta;
+
+//   ScratchT scratch;
+
+//   // OutAccessor out_res;
+
+//   // const LhsMapper lhs;
+//   // const RhsMapper rhs;
+//   // Scratch scratch;
+
+//   /* Size of dimension M */
+//   const IndexType M;
+//   /* Size of dimension N */
+//   const IndexType N;
+//   /* Size of dimension K */
+//   const IndexType K;
+
+//   static constexpr IndexType local_thread_size_n =
+//       tile_type::local_thread_size_n;
+//   static constexpr IndexType local_thread_size_m =
+//       tile_type::local_thread_size_m;
+
+//   /* The number of tiles to be processed */
+//   static constexpr IndexType num_tiles = tile_type::num_tiles;
+//   /* tile size, dimension M */
+//   static constexpr IndexType tile_size_dim_m = tile_type::tile_size_dim_m;
+//   /* tile size, dimension N */
+//   static constexpr IndexType tile_size_dim_n = tile_type::tile_size_dim_n;
+//   /* tile size, dimension K */
+//   static constexpr IndexType tile_size_dim_k = tile_type::tile_size_dim_k;
+
+//   /* workload per thread M */
+//   static constexpr IndexType work_per_thread_m =
+//   tile_type::work_per_thread_m;
+//   /* workload per thread N */
+//   static constexpr IndexType work_per_thread_n =
+//   tile_type::work_per_thread_n;
+
+//   /* the number of groups, dimension M */
+//   const IndexType group_count_m;
+//   /* the number of groups, dimension n */
+//   const IndexType group_count_n;
+//   /* the number of groups, dimension k */
+//   const IndexType group__k;
+
+//   inline TallSkinnyGemmFactory(RHS0 A, RHS0 B, RHS1 C, IndexType M, IndexType
+//   N,
+//                                IndexType K, T alpha, T beta, ScratchT
+//                                scratch, const IndexType group_count_m, const
+//                                IndexType group_count_n, const IndexType
+//                                group__k);
+
+//   inline void eval(cl::sycl::nd_item<1> id) const noexcept;
+//   // We need two load functions: one that loads normally, one that
+//   // loads + transposes on load.
+
+//   // Load a "left hand" tile, or "right hand transposed" tile
+//   // What is NoEdge for??
+//   template <typename GlobalPointerType, typename LocalPointerType>
+//   static inline void load_tile(GlobalPointerType glb_ptr,
+//                                LocalPointerType lcl_ptr,
+//                                IndexType linear_local_thread_id,
+//                                IndexType global_m_offset,
+//                                IndexType global_k_offset, IndexType
+//                                next_half, IndexType load_per_thread_lhs,
+//                                IndexType M, IndexType K);
+
+//   template <typename GlobalPointerType, typename LocalPointerType>
+//   static inline void load_and_transpose_tile(
+//       GlobalPointerType glb_ptr, LocalPointerType lcl_ptr,
+//       IndexType linear_local_thread_id, IndexType global_n_offset,
+//       IndexType global_k_offset, IndexType next_half,
+//       IndexType load_per_thread_rhs, IndexType K, IndexType N);
+// };
+
 }  // namespace blas
 
 #endif  // BLAS3_TREES_GEMM_H
