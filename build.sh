@@ -54,7 +54,7 @@ fi
 
 echo "Making args"
 
-CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release"
+CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -GNinja"
 
 NPROC=$(nproc)
 
@@ -65,7 +65,7 @@ function configure {
 }
 
 function mak {
-    pushd build && make VERBOSE=1 -j$NPROC
+    pushd build && ninja
     popd
 }
 

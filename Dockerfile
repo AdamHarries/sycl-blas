@@ -13,7 +13,7 @@ RUN apt-get -yq update
 # Utilities
 RUN apt-get install -yq --allow-downgrades --allow-remove-essential            \
     --allow-change-held-packages git wget python-pip apt-utils cmake unzip                \
-    libboost-all-dev software-properties-common python-software-properties libcompute-dev
+    libboost-all-dev software-properties-common python-software-properties libcompute-dev ninja-build
 
 RUN add-apt-repository -y ppa:ubuntu-toolchain-r/test
 
