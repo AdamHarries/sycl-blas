@@ -69,8 +69,12 @@ foreach(blas_test ${SYCL_UNITTEST_SRCS})
   set(test_exec, ${blas_test})
   add_executable(${test_exec} main.cpp ${blas_test})
   set_property(TARGET ${test_exec} PROPERTY CXX_STANDARD 11)
+<<<<<<< HEAD
   add_dependencies(${test_exec} gtest_main)
   add_dependencies(${test_exec} sycl_blas)
+=======
+  add_dependencies(${test_exec} gtest_main sycl_blas)
+>>>>>>> master
   target_link_libraries(${test_exec} PUBLIC gtest_main ${BLAS_LIBRARIES} sycl_blas ComputeCpp::ComputeCpp)
   add_test(NAME ${test_exec} COMMAND ${CMAKE_CURRENT_BINARY_DIR}/${test_exec})
   message("-- Created google test ${test_exec}")
