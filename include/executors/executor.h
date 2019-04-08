@@ -29,6 +29,7 @@
 #include "operations/blas1_trees.h"
 #include "operations/blas2_trees.h"
 #include "operations/blas3_trees.h"
+#include "policy/policy_handler.h"
 namespace blas {
 
 /** Executor.
@@ -39,43 +40,45 @@ namespace blas {
  * before using them.
  * Only one method is mandatory, the Execute method.
  */
-template <class PolicyHandler>
+template <typename policy_handler_t>
 class Executor {
  public:
-  using Policy = typename PolicyHandler::Policy;
-  Executor(typename Policy::queue_type q);
-  PolicyHandler get_policy_handler() const;
+  using policy_t = typename policy_handler_t::policy_t;
+  inline Executor(typename policy_t::queue_t q)
+      : policy_handler_(policy_handler_t(q)) {}
+  inline policy_handler_t get_policy_handler() const { return policy_handler_; }
 
-  template <typename Tree>
-  typename Policy::event_type execute(Tree tree);
+  template <typename expression_tree_t>
+  typename policy_t::event_t execute(expression_tree_t tree);
 
-  template <typename Tree, typename IndexType>
-  typename Policy::event_type execute(Tree tree, IndexType localSize);
+  template <typename expression_tree_t, typename index_t>
+  typename policy_t::event_t execute(expression_tree_t tree, index_t localSize);
 
-  template <typename Tree, typename IndexType>
-  typename Policy::event_type execute(Tree tree, IndexType localSize,
-                                      IndexType globalSize);
-  template <typename Tree, typename IndexType>
-  typename Policy::event_type execute(Tree tree, IndexType localSize,
-                                      IndexType globalSize,
-                                      IndexType local_memory_size);
+  template <typename expression_tree_t, typename index_t>
+  typename policy_t::event_t execute(expression_tree_t tree, index_t localSize,
+                                     index_t globalSize);
+  template <typename expression_tree_t, typename index_t>
+  typename policy_t::event_t execute(expression_tree_t tree, index_t localSize,
+                                     index_t globalSize,
+                                     index_t local_memory_size);
 
-  template <typename Op, typename LHS, typename RHS>
-  typename Policy::event_type execute(AssignReduction<Op, LHS, RHS>);
+  template <typename operator_t, typename lhs_t, typename rhs_t>
+  typename policy_t::event_t execute(AssignReduction<operator_t, lhs_t, rhs_t>);
 
-  template <typename Operator, typename LHS, typename RHS, typename Scratch>
-  typename Policy::event_type execute(AssignReduction<Operator, LHS, RHS> t,
-                                      Scratch scr);
-  template <typename RHS0, typename RHS1, bool DoubleBuffer, bool NbcA,
+  template <typename operator_t, typename lhs_t, typename rhs_t,
+            typename local_memory_t>
+  typename policy_t::event_t execute(
+      AssignReduction<operator_t, lhs_t, rhs_t> t, local_memory_t scr);
+  template <typename input_t, typename output_t, bool DoubleBuffer, bool NbcA,
             bool NbcB, int ClSize, typename tile_type, bool TransA, bool TransB,
-            typename T, bool is_beta_zero, int Gemm_type>
-  typename Policy::event_type execute(
-      Gemm<RHS0, RHS1, DoubleBuffer, NbcA, NbcB, ClSize, tile_type, TransA,
-           TransB, T, is_beta_zero, Gemm_type>
+            typename element_t, bool is_beta_zero, int Gemm_type>
+  typename policy_t::event_t execute(
+      Gemm<input_t, output_t, DoubleBuffer, NbcA, NbcB, ClSize, tile_type,
+           TransA, TransB, element_t, is_beta_zero, Gemm_type>
           gemm_tree);
 
  private:
-  PolicyHandler policy_handler_;
+  policy_handler_t policy_handler_;
 };
 
 }  // namespace blas

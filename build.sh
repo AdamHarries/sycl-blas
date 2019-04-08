@@ -32,7 +32,7 @@ trap display_help ERR
 
 # Get the absolute path of the ComputeCpp_DIR, from arg $1
 if [ -z "$1" ]
-  then 
+  then
   echo "No ComputeCPP Package specified."
   exit 1
 else
@@ -65,7 +65,7 @@ function configure {
 }
 
 function mak {
-    pushd build && make VERBOSE=1 -j$NPROC
+    pushd build && make -j$NPROC
     popd
 }
 

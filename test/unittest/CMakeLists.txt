@@ -52,13 +52,9 @@ set(SYCL_UNITTEST_SRCS
   ${SYCLBLAS_UNITTEST}/blas3/gemm/blas3_gemm_nt_test.cpp
   ${SYCLBLAS_UNITTEST}/blas3/gemm/blas3_gemm_tn_test.cpp
   ${SYCLBLAS_UNITTEST}/blas3/gemm/blas3_gemm_tt_test.cpp
-
-
-
   # Blas buffer tests
   ${SYCLBLAS_UNITTEST}/buffers/sycl_buffer_test.cpp
 )
-  if(NOT (${TARGET} STREQUAL "PowerVR"))
   list(APPEND SYCL_UNITTEST_SRCS
   #complex types
   ${SYCLBLAS_UNITTEST}/blas3/gemm/blas3_gemm_nc_test.cpp
@@ -67,7 +63,6 @@ set(SYCL_UNITTEST_SRCS
   ${SYCLBLAS_UNITTEST}/blas3/gemm/blas3_gemm_ct_test.cpp
   ${SYCLBLAS_UNITTEST}/blas3/gemm/blas3_gemm_cc_test.cpp
   )
-endif()
 
 foreach(blas_test ${SYCL_UNITTEST_SRCS})
   get_filename_component(test_exec ${blas_test} NAME_WE)
@@ -100,6 +95,6 @@ foreach(blas_test ${SYCL_INPROGRESS_TESTS})
   target_link_libraries(${test_exec} PUBLIC gtest_main ${BLAS_LIBRARIES} sycl_blas ComputeCpp::ComputeCpp)
   add_test(NAME ${test_exec} COMMAND ${CMAKE_CURRENT_BINARY_DIR}/${test_exec})
   message("-- Created google test ${test_exec}")
-  install(TARGETS ${test_exec} RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/sycl_blas/bin)
+  install(TARGETS ${test_exec} RUNTIME DESTINATION sycl_blas/bin)
 
 endforeach()
